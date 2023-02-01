@@ -28,8 +28,12 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
   static private Context context;
   static BinaryMessenger messenger;
   static private EventChannel eventChannel;
-  static private EventChannel.EventSink sink;
-  private static final String channelName = "vocsy_epub_viewer";
+  static private EventChannel highlightsChannel;
+
+  static private EventChannel.EventSink pageSink;
+  static private EventChannel.EventSink highlightsSink;
+
+  private static final String channelName = ReaderChannels.MAIN.getValue();
 
   /** Plugin registration. */
   public static void registerWith(Registrar registrar) {
@@ -37,14 +41,32 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
     context = registrar.context();
     activity = registrar.activity();
     messenger = registrar.messenger();
-    new EventChannel(messenger,"page").setStreamHandler(new EventChannel.StreamHandler() {
+    new EventChannel(messenger,ReaderChannels.PAGE.getValue()).setStreamHandler(new EventChannel.StreamHandler() {
 
       @Override
       public void onListen(Object o, EventChannel.EventSink eventSink) {
 
-        sink = eventSink;
-        if(sink == null) {
+        pageSink = eventSink;
+        if(pageSink == null) {
           Log.i("empty", "Sink is empty");
+        }
+      }
+
+      @Override
+      public void onCancel(Object o) {
+
+      }
+    });
+
+
+    new EventChannel(messenger,ReaderChannels.HIGHLIGHTS.getValue()).setStreamHandler(new EventChannel.StreamHandler() {
+
+      @Override
+      public void onListen(Object o, EventChannel.EventSink eventSink) {
+
+        highlightsSink = eventSink;
+        if(highlightsSink == null) {
+          Log.i("highlights", "Sink is empty");
         }
       }
 
@@ -64,13 +86,13 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
   public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
     messenger = binding.getBinaryMessenger();
     context = binding.getApplicationContext();
-    new EventChannel(messenger,"page").setStreamHandler(new EventChannel.StreamHandler() {
+    new EventChannel(messenger,ReaderChannels.PAGE.getValue()).setStreamHandler(new EventChannel.StreamHandler() {
 
       @Override
       public void onListen(Object o, EventChannel.EventSink eventSink) {
 
-        sink = eventSink;
-        if(sink == null) {
+        pageSink = eventSink;
+        if(pageSink == null) {
           Log.i("empty", "Sink is empty");
         }
       }
@@ -80,6 +102,24 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
 
       }
     });
+
+    new EventChannel(messenger,ReaderChannels.HIGHLIGHTS.getValue()).setStreamHandler(new EventChannel.StreamHandler() {
+
+      @Override
+      public void onListen(Object o, EventChannel.EventSink eventSink) {
+
+        highlightsSink = eventSink;
+        if(highlightsSink == null) {
+          Log.i("empty", "Sink is empty");
+        }
+      }
+
+      @Override
+      public void onCancel(Object o) {
+
+      }
+    });
+
     channel = new MethodChannel(binding.getFlutterEngine().getDartExecutor(), channelName);
     channel.setMethodCallHandler(this);
   }
@@ -130,23 +170,45 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
       String lastLocation = arguments.get("lastLocation").toString();
 
       Log.i("opening", "In open function");
-      if(sink == null) {
-        Log.i("sink status", "sink is empty");
+      if(pageSink == null) {
+        Log.i("sink status", "pageSink sink is empty");
       }
-      reader = new Reader(context,messenger,config, sink);
+
+      if(highlightsSink == null) {
+        Log.i("sink status", "highlightsSink sink is empty");
+      }
+
+      reader = new Reader(context,messenger,config, pageSink, highlightsSink);
       reader.open(bookPath, lastLocation);
 
     }else if(call.method.equals("close")){
       reader.close();
     }
     else if (call.method.equals("setChannel")){
-      eventChannel = new EventChannel(messenger,"page");
+      eventChannel = new EventChannel(messenger,ReaderChannels.PAGE.getValue());
       eventChannel.setStreamHandler(new EventChannel.StreamHandler() {
 
         @Override
         public void onListen(Object o, EventChannel.EventSink eventSink) {
 
-          sink = eventSink;
+          pageSink = eventSink;
+        }
+
+        @Override
+        public void onCancel(Object o) {
+
+        }
+      });
+
+
+
+      highlightsChannel = new EventChannel(messenger,ReaderChannels.HIGHLIGHTS.getValue());
+      highlightsChannel.setStreamHandler(new EventChannel.StreamHandler() {
+
+        @Override
+        public void onListen(Object o, EventChannel.EventSink eventSink) {
+
+          highlightsSink = eventSink;
         }
 
         @Override

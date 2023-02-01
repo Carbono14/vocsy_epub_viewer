@@ -35,5 +35,7 @@ public class ReaderConfig {
         config.setShowRemainingIndicator(true);
         config.setShowTts(showTts);
         config.setNightMode(nightMode);
+
+        config.setFont("Andada");
     }
 }

@@ -5,14 +5,13 @@ import android.util.Log;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.folioreader.Config;
 import com.folioreader.FolioReader;
 import com.folioreader.model.HighLight;
 import com.folioreader.model.locators.ReadLocator;
 import com.folioreader.ui.base.OnSaveHighlight;
-import com.folioreader.util.AppUtil;
 import com.folioreader.util.OnHighlightListener;
 import com.folioreader.util.ReadLocatorListener;
+import com.google.gson.Gson;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,28 +26,40 @@ import io.flutter.plugin.common.MethodChannel;
 
 public class Reader implements OnHighlightListener, ReadLocatorListener, FolioReader.OnClosedListener{
 
-    private ReaderConfig readerConfig;
-    public FolioReader folioReader;
     private Context context;
-    public MethodChannel.Result result;
+    public FolioReader folioReader;
+    private ReaderConfig readerConfig;
+
     private EventChannel eventChannel;
+
     private EventChannel.EventSink pageEventSink;
-    private BinaryMessenger messenger;
-    private ReadLocator  read_locator;
+    private EventChannel.EventSink highlightsEventSink;
+
+    private ReadLocator readLocator;
     private static final String PAGE_CHANNEL = "sage";
 
-    Reader(Context context, BinaryMessenger messenger, ReaderConfig config, EventChannel.EventSink sink){
+    // TODO: Check if those fields are really needed
+    public MethodChannel.Result result;
+    private BinaryMessenger messenger;
+
+    Reader(
+            Context context,
+            BinaryMessenger messenger,
+            ReaderConfig config,
+            EventChannel.EventSink pageSink,
+            EventChannel.EventSink highlightSink){
         this.context = context;
         readerConfig = config;
 
         getHighlightsAndSave();
-        //setPageHandler(messenger);
 
         folioReader = FolioReader.get()
                 .setOnHighlightListener(this)
                 .setReadLocatorListener(this)
                 .setOnClosedListener(this);
-        pageEventSink = sink;
+
+        pageEventSink = pageSink;
+        highlightsEventSink = highlightSink;
     }
 
     public void open(String bookPath, String lastLocation){
@@ -63,6 +74,8 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
                         ReadLocator readLocator = ReadLocator.fromJson(location);
                         folioReader.setReadLocator(readLocator);
                     }
+
+//                    readerConfig.config.setFont("Andada");
                     folioReader.setConfig(readerConfig.config, true)
                             .openBook(path);
                 } catch (Exception e) {
@@ -78,8 +91,7 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
     }
 
     private void setPageHandler(BinaryMessenger messenger){
-//        final MethodChannel channel = new MethodChannel(registrar.messenger(), "page");
-//        channel.setMethodCallHandler(new EpubKittyPlugin());
+
         Log.i("event sink is", "in set page handler:" );
         eventChannel = new EventChannel(messenger,PAGE_CHANNEL);
 
@@ -170,21 +182,26 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
 
     @Override
     public void onFolioReaderClosed() {
-        Log.i("readLocator", "-> saveReadLocator -> " + read_locator.toJson());
+        Log.i("readLocator", "-> saveReadLocator -> " + readLocator.toJson());
 
         if (pageEventSink != null){
-            pageEventSink.success(read_locator.toJson());
+            pageEventSink.success(readLocator.toJson());
         }
     }
 
     @Override
     public void onHighlight(HighLight highlight, HighLight.HighLightAction type) {
-
+        Gson gson = new Gson();
+        String json = gson.toJson(highlight);
+        System.out.println(String.format("Reader.onHighlight() json -> %s", json));
+        if (highlightsEventSink != null){
+            highlightsEventSink.success(json);
+        }
     }
 
     @Override
     public void saveReadLocator(ReadLocator readLocator) {
-        read_locator = readLocator;
+        this.readLocator = readLocator;
     }
 
 

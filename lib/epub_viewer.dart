@@ -14,6 +14,8 @@ part 'utils/util.dart';
 class VocsyEpub {
   static const MethodChannel _channel = const MethodChannel('vocsy_epub_viewer');
   static const EventChannel _pageChannel = const EventChannel('page');
+  static const EventChannel _highlightsChannel = const EventChannel('highlights');
+
 
   /// Configure Viewer's with available values
   ///
@@ -75,5 +77,14 @@ class VocsyEpub {
     Stream pageStream = _pageChannel.receiveBroadcastStream().map((value) => value);
 
     return pageStream;
+  }
+
+
+  /// Stream to get Highlights
+  static Stream get highlightsStream {
+    print("Highlights Stream - Dart layer");
+    Stream highlightsStream = _highlightsChannel.receiveBroadcastStream().map((value) => value);
+
+    return highlightsStream;
   }
 }
