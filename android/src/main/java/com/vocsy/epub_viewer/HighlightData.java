@@ -24,6 +24,22 @@ public class HighlightData implements HighLight {
     private String uuid;
     private String note;
 
+    private HighLight.HighLightAction action;
+
+    public HighlightData(HighLight highlight, HighLightAction action) {
+        this.action = action;
+        this.uuid = highlight.getUUID();
+        this.date = highlight.getDate();
+        this.note = highlight.getNote();
+        this.type = highlight.getType();
+        this.content = highlight.getContent();
+        this.bookId = highlight.getBookId();
+        this.pageId = highlight.getPageId();
+        this.pageNumber = highlight.getPageNumber();
+        this.rangy = highlight.getRangy();
+    }
+
+
     @Override
     public String toString() {
         return "HighlightData{" +
@@ -83,4 +99,16 @@ public class HighlightData implements HighLight {
     public String getNote() {
         return note;
     }
+
+    public HighLight.HighLightAction getAction() {
+        return action;
+    }
+
+    public void setAction(HighLight.HighLightAction action) {
+        this.action = action;
+    }
+
+
 }
+
+

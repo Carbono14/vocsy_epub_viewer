@@ -190,9 +190,12 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
     }
 
     @Override
-    public void onHighlight(HighLight highlight, HighLight.HighLightAction type) {
+    public void onHighlight(HighLight highlight, HighLight.HighLightAction action) {
         Gson gson = new Gson();
-        String json = gson.toJson(highlight);
+        HighlightData data = new HighlightData(highlight, action);
+
+        String json = gson.toJson(data);
+
         System.out.println(String.format("Reader.onHighlight() json -> %s", json));
         if (highlightsEventSink != null){
             highlightsEventSink.success(json);
