@@ -23,6 +23,7 @@ import java.util.List;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
+import com.folioreader.model.HighLight;
 
 public class Reader implements OnHighlightListener, ReadLocatorListener, FolioReader.OnClosedListener{
 
@@ -74,6 +75,7 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
                         ReadLocator readLocator = ReadLocator.fromJson(location);
                         folioReader.setReadLocator(readLocator);
                     }
+                    System.out.println("🚀 ~ file: Reader.java:77");
 
 //                    readerConfig.config.setFont("Andada");
                     folioReader.setConfig(readerConfig.config, true)
@@ -128,9 +130,9 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
                 ArrayList<HighLight> highlightList = null;
                 ObjectMapper objectMapper = new ObjectMapper();
                 try {
-                    highlightList = objectMapper.readValue(
+                    highlightList = (ArrayList<HighLight>) objectMapper.readValue(
                             loadAssetTextAsString("highlights/highlights_data.json"),
-                            new TypeReference<List<HighlightData>>() {
+                            new TypeReference<List<HighLight>>() {
                             });
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -182,19 +184,16 @@ public class Reader implements OnHighlightListener, ReadLocatorListener, FolioRe
 
     @Override
     public void onFolioReaderClosed() {
-        Log.i("readLocator", "-> saveReadLocator -> " + readLocator.toJson());
-
-        if (pageEventSink != null){
+        if (pageEventSink != null && readLocator != null){
             pageEventSink.success(readLocator.toJson());
         }
     }
 
     @Override
     public void onHighlight(HighLight highlight, HighLight.HighLightAction action) {
-        Gson gson = new Gson();
         HighlightData data = new HighlightData(highlight, action);
 
-        String json = gson.toJson(data);
+        String json = data.toJson();
 
         System.out.println(String.format("Reader.onHighlight() json -> %s", json));
         if (highlightsEventSink != null){

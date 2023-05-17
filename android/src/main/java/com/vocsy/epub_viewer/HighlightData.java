@@ -1,6 +1,7 @@
 package com.vocsy.epub_viewer;
 
 import com.folioreader.model.HighLight;
+import com.google.gson.Gson;
 
 import java.util.Date;
 
@@ -98,6 +99,14 @@ public class HighlightData implements HighLight {
     @Override
     public String getNote() {
         return note;
+    }
+
+    @Override
+    public String toJson() {
+        Gson gson = new Gson();
+        String json = gson.toJson(this);
+
+        return json;
     }
 
     public HighLight.HighLightAction getAction() {
