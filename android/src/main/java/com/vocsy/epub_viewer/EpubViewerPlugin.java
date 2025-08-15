@@ -14,7 +14,6 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import androidx.annotation.NonNull;
 
@@ -35,52 +34,6 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
 
   private static final String channelName = ReaderChannels.MAIN.getValue();
 
-  /** Plugin registration. */
-  public static void registerWith(Registrar registrar) {
-
-    context = registrar.context();
-    activity = registrar.activity();
-    messenger = registrar.messenger();
-    new EventChannel(messenger,ReaderChannels.PAGE.getValue()).setStreamHandler(new EventChannel.StreamHandler() {
-
-      @Override
-      public void onListen(Object o, EventChannel.EventSink eventSink) {
-
-        pageSink = eventSink;
-        if(pageSink == null) {
-          Log.i("empty", "Sink is empty");
-        }
-      }
-
-      @Override
-      public void onCancel(Object o) {
-
-      }
-    });
-
-
-    new EventChannel(messenger,ReaderChannels.HIGHLIGHTS.getValue()).setStreamHandler(new EventChannel.StreamHandler() {
-
-      @Override
-      public void onListen(Object o, EventChannel.EventSink eventSink) {
-
-        highlightsSink = eventSink;
-        if(highlightsSink == null) {
-          Log.i("highlights", "Sink is empty");
-        }
-      }
-
-      @Override
-      public void onCancel(Object o) {
-
-      }
-    });
-
-
-    final MethodChannel channel = new MethodChannel(registrar.messenger(), "vocsy_epub_viewer");
-    channel.setMethodCallHandler(new EpubViewerPlugin());
-
-  }
 
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
@@ -151,75 +104,123 @@ public class EpubViewerPlugin implements MethodCallHandler, FlutterPlugin, Activ
 
   @Override
   public void onMethodCall(MethodCall call, Result result) {
+    try {
+      switch (call.method) {
+        case "setConfig":
+          handleSetConfig(call, result);
+          break;
+        case "open":
+          handleOpen(call, result);
+          break;
+        case "close":
+          handleClose(call, result);
+          break;
+        case "setChannel":
+          handleSetChannel(call, result);
+          break;
+        default:
+          result.notImplemented();
+          break;
+      }
+    } catch (Exception e) {
+      Log.e("EpubViewerPlugin", "Error handling method call: " + call.method, e);
+      result.error("PLUGIN_ERROR", "Error in " + call.method + ": " + e.getMessage(), null);
+    }
+  }
 
-    if (call.method.equals("setConfig")){
-      Map<String,Object> arguments = (Map<String, Object>) call.arguments;
+  private void handleSetConfig(MethodCall call, Result result) {
+    Map<String,Object> arguments = (Map<String, Object>) call.arguments;
+    if (arguments == null) {
+      result.error("INVALID_ARGUMENTS", "Arguments cannot be null", null);
+      return;
+    }
+    
+    try {
       String identifier = arguments.get("identifier").toString();
       String themeColor = arguments.get("themeColor").toString();
       String scrollDirection = arguments.get("scrollDirection").toString();
       Boolean nightMode = Boolean.parseBoolean(arguments.get("nightMode").toString());
       Boolean allowSharing = Boolean.parseBoolean(arguments.get("allowSharing").toString());
       Boolean enableTts = Boolean.parseBoolean(arguments.get("enableTts").toString());
-      config = new ReaderConfig(context,identifier,themeColor,
-              scrollDirection,allowSharing, enableTts,nightMode);
+      
+      config = new ReaderConfig(context, identifier, themeColor,
+              scrollDirection, allowSharing, enableTts, nightMode);
+      result.success(null);
+    } catch (Exception e) {
+      result.error("CONFIG_ERROR", "Failed to set config: " + e.getMessage(), null);
+    }
+  }
 
-    } else if (call.method.equals("open")){
+  private void handleOpen(MethodCall call, Result result) {
+    Map<String,Object> arguments = (Map<String, Object>) call.arguments;
+    if (arguments == null) {
+      result.error("INVALID_ARGUMENTS", "Arguments cannot be null", null);
+      return;
+    }
 
-      Map<String,Object> arguments = (Map<String, Object>) call.arguments;
+    if (config == null) {
+      result.error("CONFIG_NOT_SET", "Must call setConfig before opening a book", null);
+      return;
+    }
+
+    try {
       String bookPath = arguments.get("bookPath").toString();
       String lastLocation = arguments.get("lastLocation").toString();
 
-      Log.i("opening", "In open function");
-      if(pageSink == null) {
-        Log.i("sink status", "pageSink sink is empty");
-      }
-
-      if(highlightsSink == null) {
-        Log.i("sink status", "highlightsSink sink is empty");
-      }
-
-      reader = new Reader(context,messenger,config, pageSink, highlightsSink);
+      Log.i("EpubViewerPlugin", "Opening book: " + bookPath);
+      
+      reader = new Reader(context, messenger, config, pageSink, highlightsSink);
       reader.open(bookPath, lastLocation);
-
-    }else if(call.method.equals("close")){
-      reader.close();
+      result.success(null);
+    } catch (Exception e) {
+      result.error("OPEN_ERROR", "Failed to open book: " + e.getMessage(), null);
     }
-    else if (call.method.equals("setChannel")){
-      eventChannel = new EventChannel(messenger,ReaderChannels.PAGE.getValue());
-      eventChannel.setStreamHandler(new EventChannel.StreamHandler() {
+  }
 
+  private void handleClose(MethodCall call, Result result) {
+    try {
+      if (reader != null) {
+        reader.close();
+        result.success(null);
+      } else {
+        result.error("NO_READER", "No reader instance to close", null);
+      }
+    } catch (Exception e) {
+      result.error("CLOSE_ERROR", "Failed to close reader: " + e.getMessage(), null);
+    }
+  }
+
+  private void handleSetChannel(MethodCall call, Result result) {
+    try {
+      eventChannel = new EventChannel(messenger, ReaderChannels.PAGE.getValue());
+      eventChannel.setStreamHandler(new EventChannel.StreamHandler() {
         @Override
         public void onListen(Object o, EventChannel.EventSink eventSink) {
-
           pageSink = eventSink;
         }
 
         @Override
         public void onCancel(Object o) {
-
+          pageSink = null;
         }
       });
 
-
-
-      highlightsChannel = new EventChannel(messenger,ReaderChannels.HIGHLIGHTS.getValue());
+      highlightsChannel = new EventChannel(messenger, ReaderChannels.HIGHLIGHTS.getValue());
       highlightsChannel.setStreamHandler(new EventChannel.StreamHandler() {
-
         @Override
         public void onListen(Object o, EventChannel.EventSink eventSink) {
-
           highlightsSink = eventSink;
         }
 
         @Override
         public void onCancel(Object o) {
-
+          highlightsSink = null;
         }
       });
-    }
-
-    else {
-      result.notImplemented();
+      
+      result.success(null);
+    } catch (Exception e) {
+      result.error("CHANNEL_ERROR", "Failed to set channels: " + e.getMessage(), null);
     }
   }
 }

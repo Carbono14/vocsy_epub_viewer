@@ -4,7 +4,9 @@ class Util {
   /// Get HEX code from [Colors], [MaterialColor],
   /// [Color] and [MaterialAccentColor]
   static String getHexFromColor(Color color) {
-    return '#${color.toString().replaceAll('ColorSwatch(', '').replaceAll('Color(0xff', '').replaceAll('MaterialColor(', '').replaceAll('MaterialAccentColor(', '').replaceAll('primary value: Color(0xff', '').replaceAll('primary', '').replaceAll('value:', '').replaceAll(')', '').trim()}';
+    // Convert color value to hex string
+    String value = color.value.toRadixString(16).padLeft(8, '0');
+    return '#${value.substring(2)}'; // Remove alpha channel for hex
   }
 
   /// Convert [EpubScrollDirection] to FolioReader reader String
@@ -15,8 +17,6 @@ class Util {
       case EpubScrollDirection.HORIZONTAL:
         return 'horizontal';
       case EpubScrollDirection.ALLDIRECTIONS:
-        return 'alldirections';
-      default:
         return 'alldirections';
     }
   }

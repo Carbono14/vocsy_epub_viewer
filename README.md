@@ -65,17 +65,48 @@ android.
 
 ## Install
 
-This plugin requires `Swift` to work on iOS. Also, the minimum deployment target is 9.0
+### Requirements
 
-```
-platform :ios, '9.0'
+- **Flutter**: 3.32.0 or higher
+- **Dart**: 3.6.0 or higher
+- **Android**: minSdk 26, compileSdk 35, Java 17
+- **iOS**: 14.0 or higher, Swift support required
+
+### iOS Setup
+
+Update your iOS deployment target in `ios/Podfile`:
+
+```ruby
+platform :ios, '14.0'
 ```
 
-Import into pubspec.yaml
+### Android Setup
 
+Ensure your `android/app/build.gradle` has:
+
+```gradle
+android {
+    compileSdk 35
+    
+    defaultConfig {
+        minSdk 26
+        targetSdk 35
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
 ```
+
+### Installation
+
+Add to your `pubspec.yaml`:
+
+```yaml
 dependencies:
-  vocsy_epub_viewer: latest_version
+  vocsy_epub_viewer: ^1.1.0
 ```
 
 **NOTE** Please add this to the release build type in your app build.gradle to avoid crashes on android
@@ -115,61 +146,66 @@ shrinkResources false
 ## Usage
 
 ```dart
-VocsyEpub.setConfig(
-           themeColor: Theme.of(context).primaryColor,
-           identifier: "iosBook",
-           scrollDirection: EpubScrollDirection.ALLDIRECTIONS,
-           allowSharing: true,
-           enableTts: true,
-           nightMode: true,
-       );
+// Configure the epub reader
+await VocsyEpub.setConfig(
+  themeColor: Theme.of(context).primaryColor,
+  identifier: "iosBook",
+  scrollDirection: EpubScrollDirection.ALLDIRECTIONS,
+  allowSharing: true,
+  enableTts: true,
+  nightMode: true,
+);
 
-/**
- * @bookPath
- * @lastLocation (optional and only android)
- */
-VocsyEpub.open(
-          'bookPath',
-           lastLocation: EpubLocator.fromJson({
-	   "bookId": "2239",
-	   "href": "/OEBPS/ch06.xhtml",
-	   "created": 1539934158390,
-	   "locations": {
-		"cfi": "epubcfi(/0!/4/4[simple_book]/2/2/6)"
-	          }
-	    }), // first page will open up if the value is null
-        );
+// Open an epub file
+try {
+  await VocsyEpub.open(
+    'bookPath',
+    lastLocation: EpubLocator.fromJson({
+      "bookId": "2239",
+      "href": "/OEBPS/ch06.xhtml",
+      "created": 1539934158390,
+      "locations": {
+        "cfi": "epubcfi(/0!/4/4[simple_book]/2/2/6)"
+      }
+    }), // first page will open up if the value is null
+  );
+} catch (e) {
+  print('Error opening book: $e');
+}
 
-// Get locator which you can save in your database
-
+// Listen to page changes and save locator to database
 VocsyEpub.locatorStream.listen((locator) {
-	print('LOCATOR: ${EpubLocator.fromJson(jsonDecode(locator))}');
-	// convert locator from string to json and save to your database to be retrieved later
+  print('LOCATOR: ${EpubLocator.fromJson(jsonDecode(locator))}');
+  // convert locator from string to json and save to your database to be retrieved later
 });
 
+// Listen to highlights
+VocsyEpub.highlightsStream.listen((highlight) {
+  print('HIGHLIGHT: $highlight');
+});
+
+// Close the reader when done
+await VocsyEpub.close();
 ```
-You can also load epub from your assets using `EpubViewer.openAsset()`
+You can also load epub from your assets using `VocsyEpub.openAsset()`:
 
 ```dart
-await VocsyEpub.openAsset('assets/3.epub',
-lastLocation: EpubLocator.fromJson({
-	"bookId": "2239",
-	"href": "/OEBPS/ch06.xhtml",
-	"created": 1539934158390,
-	"locations": {
-	"cfi": "epubcfi(/0!/4/4[simple_book]/2/2/6)"
-	  }
-	}), // first page will open up if the value is null
-   );
-
-// Get locator which you can save in your database
-
-VocsyEpub.locatorStream.listen((locator) {
-	print('LOCATOR: ${EpubLocator.fromJson(jsonDecode(locator))}');
-	// convert locator from string to json and save to your database to be retrieved later
-});
-
- ```
+try {
+  await VocsyEpub.openAsset(
+    'assets/3.epub',
+    lastLocation: EpubLocator.fromJson({
+      "bookId": "2239",
+      "href": "/OEBPS/ch06.xhtml",
+      "created": 1539934158390,
+      "locations": {
+        "cfi": "epubcfi(/0!/4/4[simple_book]/2/2/6)"
+      }
+    }), // first page will open up if the value is null
+  );
+} catch (e) {
+  print('Error opening asset book: $e');
+}
+```
 Check the [Example](https://github.com/kaushikgodhani/vocsy_epub_viewer/blob/main/example/lib/main.dart) for implementation
 
 ## Issues
